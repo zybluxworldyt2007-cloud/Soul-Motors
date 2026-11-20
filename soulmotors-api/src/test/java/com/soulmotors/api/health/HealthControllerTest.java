@@ -1,4 +1,4 @@
-package com.soulmotors.api;
+package com.soulmotors.api.health;
 
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -10,16 +10,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.CannotGetJdbcConnectionException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
-import com.soulmotors.api.health.HealthController;
+import com.soulmotors.api.config.CorsConfig;
+import com.soulmotors.api.config.JwtConfig;
+import com.soulmotors.api.config.SecurityConfig;
 
-/** Pruebas sin conexión real a Neon. */
-@WebMvcTest(HealthController.class)
-class SoulmotorsApiApplicationTests {
+/** Pruebas sin conexión real a Neon. /health debe ser público (sin token). */
+@WebMvcTest(controllers = HealthController.class,
+        properties = "app.jwt.secret=clave-de-pruebas-de-al-menos-32-caracteres")
+@Import({SecurityConfig.class, JwtConfig.class, CorsConfig.class})
+class HealthControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -28,7 +33,7 @@ class SoulmotorsApiApplicationTests {
     private JdbcTemplate jdbcTemplate;
 
     @Test
-    void healthNoTocaLaBaseDeDatos() throws Exception {
+    void healthEsPublicoYNoTocaLaBaseDeDatos() throws Exception {
         mockMvc.perform(get("/health"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("UP"));
