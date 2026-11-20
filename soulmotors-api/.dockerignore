@@ -1,0 +1,13 @@
+# Nunca meter secretos ni compilados locales en la imagen
+.env
+.env.*
+!.env.example
+target/
+.git
+.idea
+.vscode
+*.iml
+*.log
+README.md
+Dockerfile
+.dockerignore

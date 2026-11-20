@@ -20,6 +20,7 @@ Pruebas: `./mvnw test` (no necesitan conexión a Neon).
 | `JWT_EXPIRATION_MINUTES` | Duración del token (por defecto 480 = 8 h) |
 | `CORS_ORIGINS` | Orígenes permitidos separados por comas (por defecto `http://localhost:5173`) |
 | `PORT` | Puerto (Render lo asigna; por defecto 8080) |
+| `KEEPALIVE_ENABLED` | Auto-ping cada 10 min a la propia URL pública (por defecto `true`; solo actúa en Render) |
 | `APP_TZ` | Zona en la que la API devuelve las fechas (por defecto `America/Bogota`); en la BD se guardan en UTC |
 
 ## Endpoints
@@ -53,3 +54,34 @@ inválido/vencido responden **401**. Los errores tienen el formato
 Roles (columna `usuario.rol`): `ADMINISTRADOR`, `MECANICO`, `VENDEDOR` (también existen
 `GERENTE` y `EMPLEADO` en el CHECK de la BD). En los controladores:
 `@PreAuthorize("hasRole('ADMINISTRADOR')")`.
+
+## Despliegue en Render (S1-T03)
+
+La imagen se construye con el [`Dockerfile`](Dockerfile) (Java 21, multi-etapa, usuario no root)
+y el servicio se define en [`render.yaml`](../render.yaml) en la raíz del repo.
+
+1. En https://dashboard.render.com → **New → Blueprint** y conecta el repositorio.
+2. Elige la rama a desplegar (la que tenga `render.yaml` y `soulmotors-api/`).
+3. Render pedirá los valores marcados como secretos:
+   - `DB_URL`: `jdbc:postgresql://<host-pooler>.neon.tech/neondb?sslmode=require`
+   - `DB_USER`, `DB_PASSWORD`: credenciales de Neon
+   - `CORS_ORIGINS`: URL del frontend en Vercel, p. ej. `https://soul-motors.vercel.app,http://localhost:5173`
+   - `JWT_SECRET` lo genera Render solo.
+4. Al terminar, prueba `https://<servicio>.onrender.com/api/health` y `/api/health/db`.
+5. En Vercel define `VITE_API_BASE_URL=https://<servicio>.onrender.com/api`.
+
+### Mantenerlo despierto (auto-ping + cron)
+
+Render Free apaga el servicio tras **15 min sin tráfico** y tarda ~1 min en despertar.
+
+- **Auto-ping interno:** mientras está encendida, la API se llama a sí misma cada 10 min a
+  `/api/health` usando `RENDER_EXTERNAL_URL` (variable que pone Render). Se desactiva con
+  `KEEPALIVE_ENABLED=false`.
+- **Cron externo (respaldo):** en https://cron-job.org crea un cron job
+  - URL: `https://<servicio>.onrender.com/api/health`
+  - Frecuencia: cada 10 minutos · Método GET · timeout 30 s
+  - Así se despierta aunque Render la reinicie.
+
+`/api/health` **no consulta la BD**, para que Neon pueda suspenderse y no gaste horas de
+cómputo. Un servicio despierto todo el mes usa ~730 de las 750 horas gratis de Render por
+workspace: si tienen otro servicio Free en el mismo workspace, desactiven el auto-ping de uno.

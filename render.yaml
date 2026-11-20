@@ -1,0 +1,30 @@
+# Blueprint de Render para el backend (S1-T03).
+# Render > New > Blueprint > elegir este repo y la rama a desplegar.
+services:
+  - type: web
+    name: soulmotors-api
+    runtime: docker
+    plan: free
+    region: ohio            # misma región que Neon (us-east-2)
+    rootDir: soulmotors-api # solo redespliega si cambia el backend
+    dockerfilePath: soulmotors-api/Dockerfile
+    dockerContext: soulmotors-api
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      # Secretos: Render los pide al crear el Blueprint (no se escriben aquí)
+      - key: DB_URL
+        sync: false
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      # Clave aleatoria de 256 bits generada por Render
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRATION_MINUTES
+        value: "480"
+      - key: APP_TZ
+        value: America/Bogota
