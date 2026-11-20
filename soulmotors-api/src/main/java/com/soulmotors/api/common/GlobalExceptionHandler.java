@@ -4,7 +4,10 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -41,5 +44,32 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BadCredentialsException.class)
     ResponseEntity<ApiError> credenciales(BadCredentialsException ex) {
         return ApiError.of(HttpStatus.UNAUTHORIZED, ex.getMessage(), null);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    ResponseEntity<ApiError> sinPermiso(AccessDeniedException ex) {
+        return ApiError.of(HttpStatus.FORBIDDEN, "Su rol no tiene permiso para esta acción", null);
+    }
+
+    @ExceptionHandler(NoEncontradoException.class)
+    ResponseEntity<ApiError> noEncontrado(NoEncontradoException ex) {
+        return ApiError.of(HttpStatus.NOT_FOUND, ex.getMessage(), null);
+    }
+
+    @ExceptionHandler(ConflictoException.class)
+    ResponseEntity<ApiError> conflicto(ConflictoException ex) {
+        return ApiError.of(HttpStatus.CONFLICT, ex.getMessage(), ex.getCampos());
+    }
+
+    /** Respaldo si dos peticiones simultáneas chocan con un UNIQUE o FK de la BD. */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ResponseEntity<ApiError> integridad(DataIntegrityViolationException ex) {
+        return ApiError.of(HttpStatus.CONFLICT,
+                "La operación entra en conflicto con datos existentes (registro duplicado o en uso)", null);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ApiError> parametroInvalido(MethodArgumentTypeMismatchException ex) {
+        return ApiError.of(HttpStatus.BAD_REQUEST, "Parámetro inválido: " + ex.getName(), null);
     }
 }
